@@ -19,7 +19,7 @@ jobs:
         with:
           repository: shalion/workflows
           path: .gitleaks-config
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.WORKFLOWS_REPO_TOKEN }}
 
       # ── Checkout del repo target ─────────────────────────────────────────────
       - name: Checkout repository
@@ -37,7 +37,7 @@ jobs:
           GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }} # gitguardian:ignore
           GITLEAKS_NOTIFY_USER_LIST: "@platforms-general, @platforms-managers"
           GITLEAKS_ENABLE_COMMENTS: "true"
-          GITLEAKS_CONFIG: .gitleaks-config/.github/gitleaks.toml  # ← apunta al checkout del repo central
+          GITLEAKS_CONFIG: .gitleaks-config/.github/gitleaks.toml
           GITLEAKS_REPORT_FORMAT: sarif
           GITLEAKS_REPORT_PATH: results.sarif
 
@@ -98,7 +98,7 @@ jobs:
 
           if [ ! -f "$REPORT" ]; then
             echo "✅ No secrets found, no SARIF generated."
-            exit 0  # ← corregido: era exit 1
+            exit 0
           fi
 
           TOTAL=$(jq '[.runs[].results[]] | length' "$REPORT")
