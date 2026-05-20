@@ -1,0 +1,187 @@
+name: Secret Scan
+
+on:
+  pull_request:
+
+jobs:
+  gitleaks:
+    name: Detect secrets with Gitleaks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      # ── Checkout ────────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # ── Scan: diff (push / PR) ───────────────────────────────────────────────
+      - name: Gitleaks — diff scan
+        id: gitleaks_diff
+        uses: gitleaks/gitleaks-action@v2
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }} # gitguardian:ignore
+          GITLEAKS_NOTIFY_USER_LIST: "@platforms-general, @platforms-managers"
+          GITLEAKS_ENABLE_COMMENTS: "true"
+          GITLEAKS_CONFIG: .github/gitleaks.toml
+          GITLEAKS_REPORT_FORMAT: sarif
+          GITLEAKS_REPORT_PATH: results.sarif
+
+      # ── Upload SARIF artifact ────────────────────────────────────────────────
+      - name: Upload SARIF report as artifact
+        if: steps.gitleaks_diff.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitleaks-report
+          path: ${{ github.workspace }}/results.sarif
+          retention-days: 30
+
+      # ── Configure msmtp ──────────────────────────────────────────────────────
+      - name: Configure msmtp
+        if: steps.gitleaks_diff.outcome == 'failure'
+        env:
+          MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }} # gitguardian:ignore
+          MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }} # gitguardian:ignore
+        run: |
+          sudo apt-get install -y --quiet msmtp msmtp-mta
+
+          cat > ~/.msmtprc << EOF
+          defaults
+          auth           on
+          tls            on
+          tls_trust_file /etc/ssl/certs/ca-certificates.crt
+          logfile        ~/.msmtp.log
+
+          account        gmail
+          host           smtp.gmail.com
+          port           465
+          tls_starttls   off
+          from           ${MAIL_USERNAME}
+          user           ${MAIL_USERNAME}
+          password       ${MAIL_PASSWORD}
+
+          account default : gmail
+          EOF
+
+          chmod 600 ~/.msmtprc
+
+      # ── Notify per finding: Slack + Email ────────────────────────────────────
+      - name: Notify per finding — Slack + Email
+        if: steps.gitleaks_diff.outcome == 'failure'
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }} # gitguardian:ignore
+          SLACK_CHANNEL: "C0ATK9KSCQ5"
+          MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}     # gitguardian:ignore
+          ALERT_EMAIL: ${{ secrets.ALERT_EMAIL }}         # gitguardian:ignore
+          REPO: ${{ github.repository }}
+          BRANCH: ${{ github.ref_name }}
+          ACTOR: ${{ github.actor }}
+          SHA: ${{ github.sha }}
+          EVENT: ${{ github.event_name }}
+          RUN_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        run: |
+          REPORT="$GITHUB_WORKSPACE/results.sarif"
+
+          if [ ! -f "$REPORT" ]; then
+            echo "❌ SARIF report not found at $REPORT"
+            exit 1
+          fi
+
+          TOTAL=$(jq '[.runs[].results[]] | length' "$REPORT")
+          echo "Total findings: $TOTAL"
+
+          jq -c '.runs[].results[]' "$REPORT" | while read -r finding; do
+            RULE=$(echo    "$finding" | jq -r '.ruleId')
+            FILE=$(echo    "$finding" | jq -r '.locations[0].physicalLocation.artifactLocation.uri')
+            LINE=$(echo    "$finding" | jq -r '.locations[0].physicalLocation.region.startLine')
+            MESSAGE=$(echo "$finding" | jq -r '.message.text' | head -c 300)
+
+            echo "--- Notifying: $RULE in $FILE:$LINE ---"
+
+            # ── Slack notification ──────────────────────────────────────────
+            SLACK_PAYLOAD=$(jq -n \
+              --arg rule    "$RULE" \
+              --arg file    "$FILE" \
+              --arg line    "$LINE" \
+              --arg repo    "$REPO" \
+              --arg branch  "$BRANCH" \
+              --arg actor   "$ACTOR" \
+              --arg sha     "$SHA" \
+              --arg run_url "$RUN_URL" \
+              --arg msg     "$MESSAGE" \
+              '{
+                channel: "C0ATK9KSCQ5",
+                text: ("🚨 Secret detectado en `" + $repo + "`"),
+                blocks: [
+                  {
+                    type: "header",
+                    text: { type: "plain_text", text: ("🚨 Secret detectado: " + $rule) }
+                  },
+                  {
+                    type: "section",
+                    fields: [
+                      { type: "mrkdwn", text: ("*Archivo:*\n`" + $file + "`") },
+                      { type: "mrkdwn", text: ("*Línea:*\n`"  + $line + "`") },
+                      { type: "mrkdwn", text: ("*Repository:*\n`" + $repo + "`") },
+                      { type: "mrkdwn", text: ("*Branch:*\n`" + $branch + "`") },
+                      { type: "mrkdwn", text: ("*Actor:*\n`"  + $actor + "`") },
+                      { type: "mrkdwn", text: ("*Commit:*\n`" + ($sha | .[0:7]) + "`") }
+                    ]
+                  },
+                  { type: "divider" },
+                  {
+                    type: "section",
+                    text: { type: "mrkdwn", text: ("*Detalle:*\n" + $msg) }
+                  },
+                  { type: "divider" },
+                  {
+                    type: "section",
+                    text: { type: "mrkdwn", text: "⚠️ *Rotá las credenciales expuestas inmediatamente.*" }
+                  },
+                  {
+                    type: "actions",
+                    elements: [{
+                      type: "button",
+                      text: { type: "plain_text", text: "Ver Run" },
+                      url: $run_url,
+                      style: "danger"
+                    }]
+                  }
+                ]
+              }')
+
+            SLACK_RESPONSE=$(curl -s -X POST "https://slack.com/api/chat.postMessage" \
+              -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
+              -H "Content-Type: application/json" \
+              --data "$SLACK_PAYLOAD")
+
+            if echo "$SLACK_RESPONSE" | jq -e '.ok == true' > /dev/null 2>&1; then
+              echo "✅ Slack notification sent for $RULE"
+            else
+              echo "⚠️ Slack notification failed: $(echo "$SLACK_RESPONSE" | jq -r '.error // "unknown error"')"
+            fi
+
+            # ── Email notification ──────────────────────────────────────────
+            printf "To: %s\nFrom: GitHub Actions <%s>\nSubject: 🚨 [SECRET DETECTED] %s — %s:%s\nContent-Type: text/plain; charset=UTF-8\n\nRule       : %s\nArchivo    : %s\nLínea      : %s\nRepository : %s\nBranch     : %s\nCommit     : %s\nActor      : %s\nEvent      : %s\n\nDetalle:\n%s\n\nVer run completo:\n%s\n\nRotá las credenciales expuestas inmediatamente.\n" \
+              "$ALERT_EMAIL" "$MAIL_USERNAME" \
+              "$RULE" "$FILE" "$LINE" \
+              "$RULE" "$FILE" "$LINE" \
+              "$REPO" "$BRANCH" "$SHA" "$ACTOR" "$EVENT" \
+              "$MESSAGE" "$RUN_URL" \
+              | msmtp "$ALERT_EMAIL"
+
+            echo "✅ Email notification sent for $RULE"
+            sleep 1
+          done
+
+      # ── Fail the job if secrets were found ───────────────────────────────────
+      - name: Fail job on findings
+        if: steps.gitleaks_diff.outcome == 'failure'
+        run: |
+          echo "❌ Gitleaks found secrets. Review the SARIF report and rotate exposed credentials immediately."
+          exit 1
