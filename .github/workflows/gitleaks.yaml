@@ -13,6 +13,12 @@ jobs:
       pull-requests: write
 
     steps:
+      # ── Checkout del repo target PRIMERO ─────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       # ── Checkout shalion/workflows para obtener el gitleaks.toml ────────────
       - name: Checkout shalion/workflows (config)
         uses: actions/checkout@v4
@@ -20,20 +26,6 @@ jobs:
           repository: shalion/workflows
           path: .gitleaks-config
           ref: main
-
-      # ── Debug: verificar que el toml existe ──────────────────────────────────
-      - name: Verify gitleaks config exists
-        run: |
-          echo "--- Files in .gitleaks-config ---"
-          find .gitleaks-config -type f
-          echo "--- Checking toml ---"
-          ls -la .gitleaks-config/.github/gitleaks.toml || echo "⚠️ toml not found at expected path"
-
-      # ── Checkout del repo target ─────────────────────────────────────────────
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       # ── Scan ─────────────────────────────────────────────────────────────────
       - name: Gitleaks — diff scan
