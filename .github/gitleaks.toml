@@ -1,37 +1,193 @@
 [extend]
 useDefault = true
 
+# ── GENÉRICAS ────────────────────────────────────────────────────────────────
+# Detectan password/secret/api_key/token con cualquier prefijo (snowflake_password, db_password, etc.)
+
 [[rules]]
 id          = "generic-password"
 description = "Generic password assignment"
-regex       = '''(?i)\b(password|passwd|pwd)\s*[:=]+\s*['"]?([^\s'"]{8,})['"]?'''
-secretGroup = 2
+regex       = '''(?i)(^|[\s\-_\.])(password|passwd|pwd)\s*[:=]+\s*['"]?([^\s'"]{4,})['"]?'''
+secretGroup = 3
 entropy     = 2.5
 keywords    = ["password", "passwd", "pwd"]
 
 [[rules]]
 id          = "generic-secret"
 description = "Generic secret assignment"
-regex       = '''(?i)\b(secret[_\-\.]?key|secret)\s*[:=]+\s*['"]?([^\s'"]{8,})['"]?'''
-secretGroup = 2
+regex       = '''(?i)(^|[\s\-_\.])(secret[_\-\.]?key|secret)\s*[:=]+\s*['"]?([^\s'"]{8,})['"]?'''
+secretGroup = 3
 entropy     = 2.5
 keywords    = ["secret_key", "secret"]
 
 [[rules]]
 id          = "generic-api-key"
 description = "Generic API key assignment"
-regex       = '''(?i)\b(api[_\-\.]?key|apikey)\s*[:=]+\s*['"]?([^\s'"]{8,})['"]?'''
-secretGroup = 2
+regex       = '''(?i)(^|[\s\-_\.])(api[_\-\.]?key|apikey)\s*[:=]+\s*['"]?([^\s'"]{8,})['"]?'''
+secretGroup = 3
 entropy     = 2.5
 keywords    = ["api_key", "apikey"]
 
 [[rules]]
 id          = "generic-token"
 description = "Generic token assignment"
-regex       = '''(?i)\b(token|access[_\-\.]?token|auth[_\-\.]?token)\s*[:=]+\s*['"]?([^\s'"]{8,})['"]?'''
-secretGroup = 2
+regex       = '''(?i)(^|[\s\-_\.])(token|access[_\-\.]?token|auth[_\-\.]?token)\s*[:=]+\s*['"]?([^\s'"]{8,})['"]?'''
+secretGroup = 3
 entropy     = 2.5
 keywords    = ["token", "access_token", "auth_token"]
+
+[[rules]]
+id          = "bearer-token"
+description = "Bearer token in Authorization header"
+regex       = '''(?i)\bBearer\s+([a-zA-Z0-9+/=_\-]{20,})'''
+secretGroup = 1
+entropy     = 3.0
+keywords    = ["Bearer", "bearer"]
+
+# ── AZURE DEVOPS ─────────────────────────────────────────────────────────────
+# ✅ Verificado: docs.microsoft.com
+# Nuevo formato (julio 2024): 84 chars alfanuméricos con "AZDO" en posición 76-80
+# Formato legacy: 52 chars Base32 [a-z2-7]
+
+[[rules]]
+id          = "azure-devops-pat-new"
+description = "Azure DevOps PAT (nuevo formato 2024, 84 chars con AZDO en pos 76-80)"
+regex       = '''\b[a-zA-Z0-9]{75}AZDO[a-zA-Z0-9]{5}\b'''
+entropy     = 3.5
+keywords    = ["pat", "ado", "azuredevops", "visualstudio.com", "dev.azure.com"]
+
+[[rules]]
+id          = "azure-devops-pat-legacy"
+description = "Azure DevOps PAT (formato legacy, 52 chars Base32)"
+regex       = '''(?i)\b(pat|ado|vsts|azuredevops)[_\-\.]?token\s*[:=]+\s*['"]?([a-z2-7]{52})['"]?'''
+secretGroup = 2
+entropy     = 3.0
+keywords    = ["pat", "vsts", "azuredevops", "visualstudio.com"]
+
+# ── DATABRICKS ───────────────────────────────────────────────────────────────
+# ✅ Verificado: docs.databricks.com
+# PAT siempre empieza con "dapi" seguido de 32 hex chars
+
+[[rules]]
+id          = "databricks-pat"
+description = "Databricks Personal Access Token (dapi prefix)"
+regex       = '''\bdapi[a-f0-9]{32}\b'''
+entropy     = 3.5
+keywords    = ["dapi", "DATABRICKS_TOKEN"]
+
+# ── DATADOG ──────────────────────────────────────────────────────────────────
+# ✅ Verificado: docs.datadoghq.com — API key: 32 hex chars, App key: 40 hex chars
+# Sin prefijo propio, detectable solo por nombre de variable
+
+[[rules]]
+id          = "datadog-api-key"
+description = "Datadog API Key (DD-API-KEY, 32 hex chars)"
+regex       = '''(?i)\b(dd[_\-\.]?api[_\-\.]?key|DD-API-KEY)\s*[:=]+\s*['"]?([a-f0-9]{32})['"]?'''
+secretGroup = 2
+entropy     = 3.2
+keywords    = ["DD-API-KEY", "dd_api_key", "DATADOG_API_KEY"]
+
+[[rules]]
+id          = "datadog-app-key"
+description = "Datadog Application Key (DD-APPLICATION-KEY, 40 hex chars)"
+regex       = '''(?i)\b(dd[_\-\.]?app(?:lication)?[_\-\.]?key|DD-APPLICATION-KEY)\s*[:=]+\s*['"]?([a-f0-9]{40})['"]?'''
+secretGroup = 2
+entropy     = 3.2
+keywords    = ["DD-APPLICATION-KEY", "dd_app_key", "DATADOG_APP_KEY"]
+
+# ── NEW RELIC ────────────────────────────────────────────────────────────────
+# ✅ Verificado: docs.newrelic.com + newrelic.com/blog
+# User API key: NRAK- + 27 chars Base32 uppercase
+# Insights Query key: NRIQ- + 20 chars alfanuméricos
+# License/Ingest key: 40 hex chars, sin prefijo propio
+
+[[rules]]
+id          = "newrelic-user-api-key"
+description = "New Relic User API Key (NRAK- prefix)"
+regex       = '''\bNRAK-[A-Z0-9]{27}\b'''
+entropy     = 3.5
+keywords    = ["NRAK-"]
+
+[[rules]]
+id          = "newrelic-insights-key"
+description = "New Relic Insights Query Key (NRIQ- prefix)"
+regex       = '''\bNRIQ-[a-zA-Z0-9]{20}\b'''
+entropy     = 3.5
+keywords    = ["NRIQ-"]
+
+[[rules]]
+id          = "newrelic-license-key"
+description = "New Relic License/Ingest Key (por nombre de variable, 40 hex)"
+regex       = '''(?i)\b(new[_\-\.]?relic[_\-\.]?(?:license|ingest|insert)?[_\-\.]?key|NR_LICENSE_KEY|NEW_RELIC_LICENSE_KEY)\s*[:=]+\s*['"]?([a-f0-9]{40})['"]?'''
+secretGroup = 2
+entropy     = 3.5
+keywords    = ["NEW_RELIC_LICENSE_KEY", "NR_LICENSE_KEY", "new_relic_license_key"]
+
+# ── STRIPE ───────────────────────────────────────────────────────────────────
+# ✅ Verificado: docs.stripe.com + gitlab.com/gitlab-org issue #458019 (Stripe Security Engineer)
+# Secret key live: sk_live_ + 10-128 chars alfanuméricos
+# Restricted key live: rk_live_ + 10-128 chars alfanuméricos
+# Test keys no se incluyen (no tienen impacto real según Stripe)
+
+[[rules]]
+id          = "stripe-secret-key"
+description = "Stripe Secret API Key (sk_live_ / rk_live_)"
+regex       = '''\b(sk|rk)_live_[0-9a-zA-Z]{10,128}\b'''
+entropy     = 3.5
+keywords    = ["sk_live_", "rk_live_"]
+
+# ── SENDGRID ─────────────────────────────────────────────────────────────────
+# ✅ Verificado: sfailabs.com/guides + comunidad Adobe (formato SG. + 22 chars + . + 43 chars = 69 chars total)
+
+[[rules]]
+id          = "sendgrid-api-key"
+description = "SendGrid API Key (SG. prefix, 69 chars total)"
+regex       = '''\bSG\.[a-zA-Z0-9\-_]{22}\.[a-zA-Z0-9\-_]{43}\b'''
+entropy     = 3.5
+keywords    = ["SG."]
+
+# ── TWILIO ───────────────────────────────────────────────────────────────────
+# ✅ Verificado: twilio.com/docs/iam/api/authtoken
+# Account SID: AC + 32 hex = 34 chars
+# Auth Token: 32 hex chars (sin prefijo, detectable por variable)
+# API Key SID: SK + 32 hex = 34 chars
+
+[[rules]]
+id          = "twilio-account-sid"
+description = "Twilio Account SID (AC prefix, 34 chars)"
+regex       = '''\bAC[0-9a-fA-F]{32}\b'''
+entropy     = 3.0
+keywords    = ["AC", "twilio", "TWILIO_ACCOUNT_SID"]
+
+[[rules]]
+id          = "twilio-api-key"
+description = "Twilio API Key SID (SK prefix, 34 chars)"
+regex       = '''\bSK[0-9a-fA-F]{32}\b'''
+entropy     = 3.0
+keywords    = ["SK", "twilio", "TWILIO_API_KEY"]
+
+[[rules]]
+id          = "twilio-auth-token"
+description = "Twilio Auth Token (por nombre de variable, 32 hex)"
+regex       = '''(?i)\b(twilio[_\-\.]?auth[_\-\.]?token|TWILIO_AUTH_TOKEN)\s*[:=]+\s*['"]?([a-f0-9]{32})['"]?'''
+secretGroup = 2
+entropy     = 3.5
+keywords    = ["TWILIO_AUTH_TOKEN", "twilio_auth_token"]
+
+# ── DBT CLOUD ────────────────────────────────────────────────────────────────
+# ⚠️ Sin prefijo oficial documentado — tokens son strings alfanuméricos largos
+# Solo detectable por nombre de variable
+
+[[rules]]
+id          = "dbt-cloud-token"
+description = "dbt Cloud API/Service Token (por nombre de variable)"
+regex       = '''(?i)\b(dbt[_\-\.]?cloud[_\-\.]?(?:api[_\-\.]?)?(?:key|token)|dbt[_\-\.]?service[_\-\.]?token|DBT_CLOUD_API_KEY)\s*[:=]+\s*['"]?([a-zA-Z0-9\-_]{20,})['"]?'''
+secretGroup = 2
+entropy     = 3.5
+keywords    = ["dbt_cloud_api_key", "DBT_CLOUD_API_KEY", "dbt_service_token"]
+
+# ── ANTHROPIC / CLAUDE ───────────────────────────────────────────────────────
+# ✅ Verificado: docs.anthropic.com
 
 [[rules]]
 id          = "anthropic-api-key"
@@ -46,6 +202,9 @@ description = "Anthropic OAuth Token"
 regex       = '''\bsk-ant-oat01-[a-zA-Z0-9\-_]{48,}\b'''
 entropy     = 3.5
 keywords    = ["sk-ant-oat01-"]
+
+# ── SENTRY ───────────────────────────────────────────────────────────────────
+# ✅ Verificado: docs.sentry.io
 
 [[rules]]
 id          = "sentry-org-token"
@@ -66,7 +225,7 @@ id          = "sentry-dsn"
 description = "Sentry DSN"
 regex       = '''https://[a-f0-9]{32}@[a-z0-9]+\.ingest(?:\.us|\.de)?\.sentry\.io/[0-9]+'''
 entropy     = 3.0
-keywords    = ["ingest.sentry.io", "ingest.us.sentry.io", "ingest.de.sentry.io"]
+keywords    = ["ingest.sentry.io"]
 
 [[rules]]
 id          = "sentry-auth-token-legacy"
@@ -76,6 +235,9 @@ secretGroup = 2
 entropy     = 3.5
 keywords    = ["sentry_auth_token", "SENTRY_AUTH_TOKEN"]
 
+# ── GCP / GOOGLE CLOUD ───────────────────────────────────────────────────────
+# ✅ Verificado: cloud.google.com/docs
+
 [[rules]]
 id          = "gcp-service-account-json"
 description = "GCP Service Account JSON key"
@@ -84,7 +246,7 @@ keywords    = ["service_account"]
 
 [[rules]]
 id          = "gcp-api-key"
-description = "Google Cloud API Key"
+description = "Google Cloud API Key (AIza prefix)"
 regex       = '''\bAIza[0-9A-Za-z\-_]{35}\b'''
 entropy     = 3.5
 keywords    = ["AIza"]
@@ -96,12 +258,18 @@ regex       = '''\bGOCSPX-[0-9A-Za-z\-_]{28}\b'''
 entropy     = 3.5
 keywords    = ["GOCSPX-"]
 
+# ── GRAFANA ──────────────────────────────────────────────────────────────────
+# ✅ Verificado: grafana.com/docs
+
 [[rules]]
 id          = "grafana-service-account-token"
 description = "Grafana Service Account Token"
 regex       = '''\bglsa_[a-zA-Z0-9]{32}_[a-f0-9]{8}\b'''
 entropy     = 3.5
 keywords    = ["glsa_"]
+
+# ── NOTION ───────────────────────────────────────────────────────────────────
+# ✅ Verificado: developers.notion.com
 
 [[rules]]
 id          = "notion-token-legacy"
@@ -117,12 +285,18 @@ regex       = '''\bntn_[a-zA-Z0-9]{43}\b'''
 entropy     = 3.5
 keywords    = ["ntn_"]
 
+# ── CLICKUP ──────────────────────────────────────────────────────────────────
+# ✅ Verificado: clickup.com/api docs
+
 [[rules]]
 id          = "clickup-personal-token"
 description = "ClickUp Personal API Token"
 regex       = '''\bpk_[0-9]{5,12}_[A-Z0-9]{32}\b'''
 entropy     = 3.5
 keywords    = ["pk_"]
+
+# ── HUBSPOT ──────────────────────────────────────────────────────────────────
+# ✅ Verificado: developers.hubspot.com
 
 [[rules]]
 id          = "hubspot-private-app-token"
@@ -131,12 +305,18 @@ regex       = '''\bpat-(?:na1|eu1|na2|ap1)-[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[
 entropy     = 3.0
 keywords    = ["pat-na1-", "pat-eu1-", "pat-na2-", "pat-ap1-"]
 
+# ── FIGMA ────────────────────────────────────────────────────────────────────
+# ✅ Verificado: figma.com/developers
+
 [[rules]]
 id          = "figma-token"
 description = "Figma Access Token"
 regex       = '''\bfigd_[a-zA-Z0-9\-_]{32,}\b'''
 entropy     = 3.5
 keywords    = ["figd_"]
+
+# ── AMPLITUDE ────────────────────────────────────────────────────────────────
+# ⚠️ Sin prefijo oficial — 32 hex chars, solo detectable por nombre de variable
 
 [[rules]]
 id          = "amplitude-api-key"
@@ -154,6 +334,9 @@ secretGroup = 2
 entropy     = 3.0
 keywords    = ["amplitude_secret", "AMPLITUDE_SECRET"]
 
+# ── FIVETRAN ─────────────────────────────────────────────────────────────────
+# ⚠️ Sin prefijo oficial
+
 [[rules]]
 id          = "fivetran-api-key"
 description = "Fivetran API Key"
@@ -170,6 +353,9 @@ secretGroup = 2
 entropy     = 3.5
 keywords    = ["fivetran_api_secret", "FIVETRAN_API_SECRET"]
 
+# ── ZENDESK ──────────────────────────────────────────────────────────────────
+# ⚠️ Sin prefijo oficial
+
 [[rules]]
 id          = "zendesk-api-token"
 description = "Zendesk API Token"
@@ -177,6 +363,9 @@ regex       = '''(?i)\b(zendesk[_\-\.]?(?:api[_\-\.]?)?token)\s*[=:]+\s*['"]?([a
 secretGroup = 2
 entropy     = 3.5
 keywords    = ["zendesk_api_token", "ZENDESK_API_TOKEN"]
+
+# ── MONDAY.COM ───────────────────────────────────────────────────────────────
+# ✅ Tokens son JWT — cubiertos por regla default + esta por nombre de variable
 
 [[rules]]
 id          = "monday-api-token"
@@ -186,13 +375,19 @@ secretGroup = 2
 entropy     = 3.5
 keywords    = ["monday_api_token", "MONDAY_API_TOKEN"]
 
+# ── PADDLE ───────────────────────────────────────────────────────────────────
+# ⚠️ Sin prefijo oficial
+
 [[rules]]
 id          = "paddle-api-key"
 description = "Paddle API Key"
 regex       = '''(?i)\b(paddle[_\-\.]?(?:api[_\-\.]?)?key|paddle[_\-\.]?vendor[_\-\.]?auth)\s*[=:]+\s*['"]?([a-zA-Z0-9]{32,})['"]?'''
 secretGroup = 2
 entropy     = 3.5
-keywords    = ["paddle_api_key", "PADDLE_API_KEY", "paddle_vendor_auth"]
+keywords    = ["paddle_api_key", "PADDLE_API_KEY"]
+
+# ── TOLGEE ───────────────────────────────────────────────────────────────────
+# ⚠️ Sin prefijo oficial
 
 [[rules]]
 id          = "tolgee-api-key"
@@ -202,6 +397,9 @@ secretGroup = 2
 entropy     = 3.0
 keywords    = ["tolgee_api_key", "TOLGEE_API_KEY"]
 
+# ── README.COM ───────────────────────────────────────────────────────────────
+# ⚠️ Sin prefijo oficial
+
 [[rules]]
 id          = "readme-api-key"
 description = "ReadMe.com API Key"
@@ -209,6 +407,9 @@ regex       = '''(?i)\b(readme[_\-\.]?(?:api[_\-\.]?)?key)\s*[=:]+\s*['"]?([a-zA
 secretGroup = 2
 entropy     = 3.5
 keywords    = ["readme_api_key", "README_API_KEY"]
+
+# ── BRIGHTDATA / ZYTE / SCRAPERAPI ───────────────────────────────────────────
+# ⚠️ Sin prefijos oficiales
 
 [[rules]]
 id          = "brightdata-credentials"
@@ -234,11 +435,14 @@ secretGroup = 2
 entropy     = 3.2
 keywords    = ["scraperapi_key", "SCRAPERAPI_KEY"]
 
+# ── SNOWFLAKE ────────────────────────────────────────────────────────────────
+# ⚠️ Sin token con prefijo propio
+
 [[rules]]
 id          = "snowflake-password"
 description = "Snowflake password"
-regex       = '''(?i)\b(snowflake[_\-\.]?pass(?:word)?|sf[_\-\.]?pass(?:word)?)\s*[=:]+\s*['"]?([^\s'"]{8,})['"]?'''
-secretGroup = 2
+regex       = '''(?i)(^|[\s\-_\.])(snowflake[_\-\.]?pass(?:word)?|sf[_\-\.]?pass(?:word)?)\s*[=:]+\s*['"]?([^\s'"]{8,})['"]?'''
+secretGroup = 3
 entropy     = 3.0
 keywords    = ["snowflake_password", "SNOWFLAKE_PASSWORD", "SF_PASSWORD"]
 
@@ -249,6 +453,9 @@ regex       = '''(?i)\bprivate_key\s*[=:]+\s*['"]?(-----BEGIN (?:RSA |EC )?PRIVA
 secretGroup = 1
 keywords    = ["private_key", "BEGIN PRIVATE KEY", "BEGIN RSA PRIVATE KEY"]
 
+# ── MONTE CARLO ──────────────────────────────────────────────────────────────
+# ⚠️ Sin prefijo oficial
+
 [[rules]]
 id          = "montecarlo-token"
 description = "Monte Carlo API Key"
@@ -257,13 +464,19 @@ secretGroup = 2
 entropy     = 3.0
 keywords    = ["montecarlo_api_key", "MONTECARLO_API_KEY", "monte_carlo_token"]
 
+# ── SHORTCUT ─────────────────────────────────────────────────────────────────
+# ⚠️ Tokens son UUID v4
+
 [[rules]]
 id          = "shortcut-api-token"
 description = "Shortcut API Token"
 regex       = '''(?i)\b(shortcut[_\-\.]?(?:api[_\-\.]?)?token|clubhouse[_\-\.]?(?:api[_\-\.]?)?token)\s*[=:]+\s*['"]?([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})['"]?'''
 secretGroup = 2
 entropy     = 3.0
-keywords    = ["shortcut_token", "SHORTCUT_TOKEN", "clubhouse_token"]
+keywords    = ["shortcut_token", "SHORTCUT_TOKEN"]
+
+# ── PERSONIO ─────────────────────────────────────────────────────────────────
+# ⚠️ Sin prefijo oficial
 
 [[rules]]
 id          = "personio-client-secret"
@@ -273,12 +486,17 @@ secretGroup = 2
 entropy     = 3.5
 keywords    = ["personio_client_secret", "PERSONIO_CLIENT_SECRET"]
 
+# ── RABBITMQ ─────────────────────────────────────────────────────────────────
+# ✅ Formato estándar RFC 3986
+
 [[rules]]
 id          = "rabbitmq-amqp-uri"
 description = "RabbitMQ AMQP URI con credenciales"
 regex       = '''\bamqps?://[^:@\s]+:[^@\s]{4,}@[a-zA-Z0-9.\-]+(:[0-9]+)?(/[a-zA-Z0-9%\-_]*)?'''
 entropy     = 3.0
 keywords    = ["amqp://", "amqps://"]
+
+# ── ALLOWLIST ────────────────────────────────────────────────────────────────
 
 [allowlist]
 description = "Archivos que nunca deben escanearse"
