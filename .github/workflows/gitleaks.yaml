@@ -21,6 +21,14 @@ jobs:
           path: .gitleaks-config
           ref: main
 
+      # ── Debug: verificar que el toml existe ──────────────────────────────────
+      - name: Verify gitleaks config exists
+        run: |
+          echo "--- Files in .gitleaks-config ---"
+          find .gitleaks-config -type f
+          echo "--- Checking toml ---"
+          ls -la .gitleaks-config/.github/gitleaks.toml || echo "⚠️ toml not found at expected path"
+
       # ── Checkout del repo target ─────────────────────────────────────────────
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -43,7 +51,7 @@ jobs:
 
       # ── Upload SARIF artifact ────────────────────────────────────────────────
       - name: Upload SARIF report as artifact
-        if: steps.gitleaks_diff.outcome == 'failure'
+        if: steps.gitleaks_diff.outcome == 'failure' && hashFiles('results.sarif') != ''
         uses: actions/upload-artifact@v4
         with:
           name: gitleaks-report
@@ -52,7 +60,7 @@ jobs:
 
       # ── Configure msmtp ──────────────────────────────────────────────────────
       - name: Configure msmtp
-        if: steps.gitleaks_diff.outcome == 'failure'
+        if: steps.gitleaks_diff.outcome == 'failure' && hashFiles('results.sarif') != ''
         env:
           MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }} # gitguardian:ignore
           MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }} # gitguardian:ignore
@@ -81,7 +89,7 @@ jobs:
 
       # ── Notify per finding: Slack + Email ────────────────────────────────────
       - name: Notify per finding — Slack + Email
-        if: steps.gitleaks_diff.outcome == 'failure'
+        if: steps.gitleaks_diff.outcome == 'failure' && hashFiles('results.sarif') != ''
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }} # gitguardian:ignore
           SLACK_CHANNEL: "C0ATK9KSCQ5"
@@ -190,7 +198,7 @@ jobs:
 
       # ── Fail the job if secrets were found ───────────────────────────────────
       - name: Fail job on findings
-        if: steps.gitleaks_diff.outcome == 'failure'
+        if: steps.gitleaks_diff.outcome == 'failure' && hashFiles('results.sarif') != ''
         run: |
           echo "❌ Gitleaks found secrets. Review the SARIF report and rotate exposed credentials immediately."
           exit 1
