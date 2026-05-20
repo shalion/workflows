@@ -1,81 +1,80 @@
-# .gitleaks.toml — Shalion custom rules
-# Versión revisada contra documentación oficial de cada servicio.
-# Última revisión: Abril 2026
-#
-# Leyenda de estado de verificación:
-#   ✅ Verificado contra docs oficiales o fuente primaria
-#   ⚠️  Basado en formato conocido, sin doc oficial con regex exacta
-#   ❌  Eliminado por no tener formato identificable sin contexto
-
 [extend]
 useDefault = true
 
-# ─────────────────────────────────────────────
-# ANTHROPIC / CLAUDE
-# ✅ Verificado:
-#   - API Key:    sk-ant-api03- + ~48 chars alfanuméricos
-#   - OAuth Token (Claude.ai Pro/Max): sk-ant-oat01- + ~48 chars
-# ─────────────────────────────────────────────
+[[rules]]
+id          = "generic-password"
+description = "Generic password assignment"
+regex       = '''(?i)\b(password|passwd|pwd)\s*[:=]+\s*['"]?([^\s'"]{8,})['"]?'''
+secretGroup = 2
+entropy     = 2.5
+keywords    = ["password", "passwd", "pwd"]
+
+[[rules]]
+id          = "generic-secret"
+description = "Generic secret assignment"
+regex       = '''(?i)\b(secret[_\-\.]?key|secret)\s*[:=]+\s*['"]?([^\s'"]{8,})['"]?'''
+secretGroup = 2
+entropy     = 2.5
+keywords    = ["secret_key", "secret"]
+
+[[rules]]
+id          = "generic-api-key"
+description = "Generic API key assignment"
+regex       = '''(?i)\b(api[_\-\.]?key|apikey)\s*[:=]+\s*['"]?([^\s'"]{8,})['"]?'''
+secretGroup = 2
+entropy     = 2.5
+keywords    = ["api_key", "apikey"]
+
+[[rules]]
+id          = "generic-token"
+description = "Generic token assignment"
+regex       = '''(?i)\b(token|access[_\-\.]?token|auth[_\-\.]?token)\s*[:=]+\s*['"]?([^\s'"]{8,})['"]?'''
+secretGroup = 2
+entropy     = 2.5
+keywords    = ["token", "access_token", "auth_token"]
 
 [[rules]]
 id          = "anthropic-api-key"
-description = "Anthropic API Key (sk-ant-api03- prefix)"
+description = "Anthropic API Key"
 regex       = '''\bsk-ant-api03-[a-zA-Z0-9\-_]{48,}\b'''
 entropy     = 3.5
-keywords    = ["sk-ant-api03-"] # gitguardian:ignore
+keywords    = ["sk-ant-api03-"]
 
 [[rules]]
 id          = "anthropic-oauth-token"
-description = "Anthropic OAuth Token from Claude.ai subscription (sk-ant-oat01- prefix)"
+description = "Anthropic OAuth Token"
 regex       = '''\bsk-ant-oat01-[a-zA-Z0-9\-_]{48,}\b'''
 entropy     = 3.5
-keywords    = ["sk-ant-oat01-"] # gitguardian:ignore
-
-# ─────────────────────────────────────────────
-# SENTRY
-# ✅ Verificado:
-#   - sntrys_ = Organization token (desde ~2024)
-#   - sntryu_ = User personal token (desde ~2025)
-#   - DSN: https://<32hex>@<host>.ingest[.us|.de].sentry.io/<id>
-#   - Legacy token: 64 hex chars, detectado por nombre de variable
-# ─────────────────────────────────────────────
+keywords    = ["sk-ant-oat01-"]
 
 [[rules]]
 id          = "sentry-org-token"
-description = "Sentry Organization Auth Token (sntrys_ prefix)"
+description = "Sentry Organization Auth Token"
 regex       = '''\bsntrys_[a-zA-Z0-9+/=_\-]{64,}\b'''
 entropy     = 3.5
-keywords    = ["sntrys_"] # gitguardian:ignore
+keywords    = ["sntrys_"]
 
 [[rules]]
 id          = "sentry-user-token"
-description = "Sentry User Personal Token (sntryu_ prefix, desde 2025)"
+description = "Sentry User Personal Token"
 regex       = '''\bsntryu_[a-zA-Z0-9+/=_\-]{64,}\b'''
 entropy     = 3.5
-keywords    = ["sntryu_"] # gitguardian:ignore
+keywords    = ["sntryu_"]
 
 [[rules]]
 id          = "sentry-dsn"
-description = "Sentry DSN con secret key embebido"
+description = "Sentry DSN"
 regex       = '''https://[a-f0-9]{32}@[a-z0-9]+\.ingest(?:\.us|\.de)?\.sentry\.io/[0-9]+'''
 entropy     = 3.0
 keywords    = ["ingest.sentry.io", "ingest.us.sentry.io", "ingest.de.sentry.io"]
 
 [[rules]]
 id          = "sentry-auth-token-legacy"
-description = "Sentry legacy auth token 64-hex (por nombre de variable)"
+description = "Sentry legacy auth token"
 regex       = '''(?i)(sentry[_\-\.]?(?:auth[_\-\.]?)?token|SENTRY_AUTH_TOKEN)\s*[=:]+\s*['"]?([a-f0-9]{64})['"]?'''
 secretGroup = 2
 entropy     = 3.5
 keywords    = ["sentry_auth_token", "SENTRY_AUTH_TOKEN"]
-
-# ─────────────────────────────────────────────
-# GCP / GOOGLE CLOUD
-# ✅ Verificado:
-#   - Service Account JSON: contiene "type": "service_account"
-#   - API Key: prefijo AIza + exactamente 35 chars
-#   - OAuth Client Secret: prefijo GOCSPX- + 28 chars
-# ─────────────────────────────────────────────
 
 [[rules]]
 id          = "gcp-service-account-json"
@@ -85,113 +84,63 @@ keywords    = ["service_account"]
 
 [[rules]]
 id          = "gcp-api-key"
-description = "Google Cloud API Key (AIza prefix + 35 chars)"
+description = "Google Cloud API Key"
 regex       = '''\bAIza[0-9A-Za-z\-_]{35}\b'''
 entropy     = 3.5
-keywords    = ["AIza"] # gitguardian:ignore
+keywords    = ["AIza"]
 
 [[rules]]
 id          = "gcp-oauth-client-secret"
-description = "Google OAuth2 Client Secret (GOCSPX- prefix + 28 chars)"
+description = "Google OAuth2 Client Secret"
 regex       = '''\bGOCSPX-[0-9A-Za-z\-_]{28}\b'''
 entropy     = 3.5
-keywords    = ["GOCSPX-"] # gitguardian:ignore
-
-# ─────────────────────────────────────────────
-# GRAFANA
-# ✅ Verificado contra docs oficiales de Grafana:
-#   - Service Account Token: glsa_<32 alphanum>_<8 hex checksum>
-#     Ejemplo real de la doc: glsa_iNValIdinValiDinvalidinvalidinva_5b582697
-#   - API Key legacy (base64 JWT eyJ...) ya cubierto por regla JWT default
-# ─────────────────────────────────────────────
+keywords    = ["GOCSPX-"]
 
 [[rules]]
 id          = "grafana-service-account-token"
-description = "Grafana Service Account Token (glsa_ + 32 chars + _ + 8 hex checksum)"
+description = "Grafana Service Account Token"
 regex       = '''\bglsa_[a-zA-Z0-9]{32}_[a-f0-9]{8}\b'''
 entropy     = 3.5
-keywords    = ["glsa_"] # gitguardian:ignore
-
-# ─────────────────────────────────────────────
-# NOTION
-# ✅ Verificado:
-#   - Formato hasta sep 2024: secret_<43 alphanum>
-#   - Formato desde sep 2024: ntn_<43 alphanum>
-#   - Ambos siguen siendo válidos simultáneamente
-#   Nota: Notion oficialmente desaconseja validar por regex
-#   porque el formato puede cambiar en el futuro.
-# ─────────────────────────────────────────────
+keywords    = ["glsa_"]
 
 [[rules]]
 id          = "notion-token-legacy"
-description = "Notion Internal Integration Token (secret_ prefix, pre-sep 2024)"
+description = "Notion Integration Token (legacy)"
 regex       = '''\bsecret_[a-zA-Z0-9]{43}\b'''
 entropy     = 3.5
 keywords    = ["secret_"]
 
 [[rules]]
 id          = "notion-token-new"
-description = "Notion Internal Integration Token (ntn_ prefix, desde sep 2024)"
+description = "Notion Integration Token (new)"
 regex       = '''\bntn_[a-zA-Z0-9]{43}\b'''
 entropy     = 3.5
-keywords    = ["ntn_"] # gitguardian:ignore
-
-# ─────────────────────────────────────────────
-# CLICKUP
-# ✅ Verificado contra docs oficiales y ejemplos reales:
-#   - Personal token: pk_<ID numérico 5-12 digits>_<32 uppercase alphanum>
-#     Ejemplo real: pk_4753994_EXP7MPOJ7XQM5UJDV2M45MPF0YHH5YHO
-#   - OAuth token: sin prefijo identificable, no incluimos
-# ─────────────────────────────────────────────
+keywords    = ["ntn_"]
 
 [[rules]]
 id          = "clickup-personal-token"
-description = "ClickUp Personal API Token (pk_<id>_<32chars> format)"
+description = "ClickUp Personal API Token"
 regex       = '''\bpk_[0-9]{5,12}_[A-Z0-9]{32}\b'''
 entropy     = 3.5
-keywords    = ["pk_"] # gitguardian:ignore
-
-# ─────────────────────────────────────────────
-# HUBSPOT
-# ✅ Verificado:
-#   - Private App token: pat-{region}-{UUID v4}
-#     Regiones: na1, eu1, na2, ap1
-#     Ejemplo: pat-na1-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-#   - API Key legacy (deprecado 2022): UUID simple, demasiado genérico,
-#     no incluimos para evitar falsos positivos
-# ─────────────────────────────────────────────
+keywords    = ["pk_"]
 
 [[rules]]
 id          = "hubspot-private-app-token"
-description = "HubSpot Private App Access Token (pat-{region}-{UUID} format)"
+description = "HubSpot Private App Access Token"
 regex       = '''\bpat-(?:na1|eu1|na2|ap1)-[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\b'''
 entropy     = 3.0
-keywords    = ["pat-na1-", "pat-eu1-", "pat-na2-", "pat-ap1-"] # gitguardian:ignore
-
-# ─────────────────────────────────────────────
-# FIGMA
-# ✅ Verificado:
-#   - Personal Access Token y OAuth Token: prefijo figd_ + base64url chars
-#     Longitud variable (mínimo ~32 chars tras el prefijo)
-# ─────────────────────────────────────────────
+keywords    = ["pat-na1-", "pat-eu1-", "pat-na2-", "pat-ap1-"]
 
 [[rules]]
 id          = "figma-token"
-description = "Figma Personal Access Token o OAuth Token (figd_ prefix)"
+description = "Figma Access Token"
 regex       = '''\bfigd_[a-zA-Z0-9\-_]{32,}\b'''
 entropy     = 3.5
-keywords    = ["figd_"] # gitguardian:ignore
-
-# ─────────────────────────────────────────────
-# AMPLITUDE
-# ⚠️  Sin prefijo identificable oficial.
-#    API Key y Secret Key: strings hex de 32 chars.
-#    Solo detectable por nombre de variable.
-# ─────────────────────────────────────────────
+keywords    = ["figd_"]
 
 [[rules]]
 id          = "amplitude-api-key"
-description = "Amplitude API Key (por nombre de variable)"
+description = "Amplitude API Key"
 regex       = '''(?i)\b(amplitude[_\-\.]?(?:api[_\-\.]?)?key)\s*[=:]+\s*['"]?([a-f0-9]{32})['"]?'''
 secretGroup = 2
 entropy     = 3.0
@@ -199,21 +148,15 @@ keywords    = ["amplitude_api_key", "AMPLITUDE_API_KEY"]
 
 [[rules]]
 id          = "amplitude-secret-key"
-description = "Amplitude Secret Key (por nombre de variable)"
+description = "Amplitude Secret Key"
 regex       = '''(?i)\b(amplitude[_\-\.]?secret(?:[_\-\.]?key)?)\s*[=:]+\s*['"]?([a-f0-9]{32})['"]?'''
 secretGroup = 2
 entropy     = 3.0
 keywords    = ["amplitude_secret", "AMPLITUDE_SECRET"]
 
-# ─────────────────────────────────────────────
-# FIVETRAN
-# ⚠️  Sin prefijo oficial. API Key + Secret: alfanuméricos sin patrón fijo.
-#    Solo detectable por nombre de variable.
-# ─────────────────────────────────────────────
-
 [[rules]]
 id          = "fivetran-api-key"
-description = "Fivetran API Key (por nombre de variable)"
+description = "Fivetran API Key"
 regex       = '''(?i)\b(fivetran[_\-\.]?(?:api[_\-\.]?)?key)\s*[=:]+\s*['"]?([a-zA-Z0-9]{20,})['"]?'''
 secretGroup = 2
 entropy     = 3.5
@@ -221,89 +164,55 @@ keywords    = ["fivetran_api_key", "FIVETRAN_API_KEY"]
 
 [[rules]]
 id          = "fivetran-api-secret"
-description = "Fivetran API Secret (por nombre de variable)"
+description = "Fivetran API Secret"
 regex       = '''(?i)\b(fivetran[_\-\.]?(?:api[_\-\.]?)?secret)\s*[=:]+\s*['"]?([a-zA-Z0-9]{20,})['"]?'''
 secretGroup = 2
 entropy     = 3.5
 keywords    = ["fivetran_api_secret", "FIVETRAN_API_SECRET"]
 
-# ─────────────────────────────────────────────
-# ZENDESK
-# ⚠️  Sin prefijo oficial. Tokens: strings alfanuméricos largos.
-#    Solo detectable por nombre de variable.
-# ─────────────────────────────────────────────
-
 [[rules]]
 id          = "zendesk-api-token"
-description = "Zendesk API Token (por nombre de variable)"
+description = "Zendesk API Token"
 regex       = '''(?i)\b(zendesk[_\-\.]?(?:api[_\-\.]?)?token)\s*[=:]+\s*['"]?([a-zA-Z0-9\/+]{40,})['"]?'''
 secretGroup = 2
 entropy     = 3.5
 keywords    = ["zendesk_api_token", "ZENDESK_API_TOKEN"]
 
-# ─────────────────────────────────────────────
-# MONDAY.COM
-# ⚠️  Tokens son JWT (eyJ...). Los JWT genéricos ya los cubre la
-#    regla default de Gitleaks. Añadimos detección por nombre de variable
-#    para cubrir el caso de variable con nombre monday sin valor JWT.
-# ─────────────────────────────────────────────
-
 [[rules]]
 id          = "monday-api-token"
-description = "Monday.com API Token JWT (por nombre de variable)"
+description = "Monday.com API Token"
 regex       = '''(?i)\b(monday[_\-\.]?(?:api[_\-\.]?)?token)\s*[=:]+\s*['"]?(eyJ[a-zA-Z0-9\-_]+\.eyJ[a-zA-Z0-9\-_]+\.[a-zA-Z0-9\-_]+)['"]?'''
 secretGroup = 2
 entropy     = 3.5
 keywords    = ["monday_api_token", "MONDAY_API_TOKEN"]
 
-# ─────────────────────────────────────────────
-# PADDLE
-# ⚠️  Sin prefijo oficial documentado.
-#    Solo detectable por nombre de variable.
-# ─────────────────────────────────────────────
-
 [[rules]]
 id          = "paddle-api-key"
-description = "Paddle API Key (por nombre de variable)"
+description = "Paddle API Key"
 regex       = '''(?i)\b(paddle[_\-\.]?(?:api[_\-\.]?)?key|paddle[_\-\.]?vendor[_\-\.]?auth)\s*[=:]+\s*['"]?([a-zA-Z0-9]{32,})['"]?'''
 secretGroup = 2
 entropy     = 3.5
 keywords    = ["paddle_api_key", "PADDLE_API_KEY", "paddle_vendor_auth"]
 
-# ─────────────────────────────────────────────
-# TOLGEE
-# ⚠️  Sin prefijo oficial. Solo detectable por nombre de variable.
-# ─────────────────────────────────────────────
-
 [[rules]]
 id          = "tolgee-api-key"
-description = "Tolgee API Key (por nombre de variable)"
+description = "Tolgee API Key"
 regex       = '''(?i)\b(tolgee[_\-\.]?(?:api[_\-\.]?)?key)\s*[=:]+\s*['"]?([a-zA-Z0-9\-_]{20,})['"]?'''
 secretGroup = 2
 entropy     = 3.0
 keywords    = ["tolgee_api_key", "TOLGEE_API_KEY"]
 
-# ─────────────────────────────────────────────
-# README.COM
-# ⚠️  Sin prefijo oficial. Solo detectable por nombre de variable.
-# ─────────────────────────────────────────────
-
 [[rules]]
 id          = "readme-api-key"
-description = "ReadMe.com API Key (por nombre de variable)"
+description = "ReadMe.com API Key"
 regex       = '''(?i)\b(readme[_\-\.]?(?:api[_\-\.]?)?key)\s*[=:]+\s*['"]?([a-zA-Z0-9]{40,})['"]?'''
 secretGroup = 2
 entropy     = 3.5
 keywords    = ["readme_api_key", "README_API_KEY"]
 
-# ─────────────────────────────────────────────
-# BRIGHTDATA / ZYTE / SCRAPERAPI
-# ⚠️  Sin prefijos identificables. Solo detectable por nombre de variable.
-# ─────────────────────────────────────────────
-
 [[rules]]
 id          = "brightdata-credentials"
-description = "BrightData proxy credentials (por nombre de variable)"
+description = "BrightData proxy credentials"
 regex       = '''(?i)\b(brightdata|luminati)[_\-\.]?(?:password|api[_\-\.]?key|customer|token)\s*[=:]+\s*['"]?([a-zA-Z0-9\-_]{16,})['"]?'''
 secretGroup = 2
 entropy     = 3.0
@@ -311,7 +220,7 @@ keywords    = ["brightdata", "luminati", "BRIGHTDATA"]
 
 [[rules]]
 id          = "zyte-api-key"
-description = "Zyte (Scrapy Cloud) API Key (por nombre de variable)"
+description = "Zyte API Key"
 regex       = '''(?i)\b(zyte[_\-\.]?(?:api[_\-\.]?)?key|scrapy[_\-\.]?cloud[_\-\.]?key)\s*[=:]+\s*['"]?([a-f0-9]{32})['"]?'''
 secretGroup = 2
 entropy     = 3.2
@@ -319,22 +228,15 @@ keywords    = ["zyte_api_key", "ZYTE_API_KEY"]
 
 [[rules]]
 id          = "scraperapi-key"
-description = "ScraperAPI API Key (por nombre de variable)"
+description = "ScraperAPI API Key"
 regex       = '''(?i)\b(scraper[_\-\.]?api[_\-\.]?key|scraperapi[_\-\.]?key)\s*[=:]+\s*['"]?([a-f0-9]{32})['"]?'''
 secretGroup = 2
 entropy     = 3.2
 keywords    = ["scraperapi_key", "SCRAPERAPI_KEY"]
 
-# ─────────────────────────────────────────────
-# SNOWFLAKE
-# ⚠️  Sin token de API con prefijo propio.
-#    Detectamos: password en variables de config y private key para key-pair auth.
-#    La account URL sí tiene formato fijo: <account>.snowflakecomputing.com
-# ─────────────────────────────────────────────
-
 [[rules]]
 id          = "snowflake-password"
-description = "Snowflake password en variable de config"
+description = "Snowflake password"
 regex       = '''(?i)\b(snowflake[_\-\.]?pass(?:word)?|sf[_\-\.]?pass(?:word)?)\s*[=:]+\s*['"]?([^\s'"]{8,})['"]?'''
 secretGroup = 2
 entropy     = 3.0
@@ -342,66 +244,41 @@ keywords    = ["snowflake_password", "SNOWFLAKE_PASSWORD", "SF_PASSWORD"]
 
 [[rules]]
 id          = "snowflake-private-key"
-description = "Snowflake private key para key-pair auth"
+description = "Snowflake private key"
 regex       = '''(?i)\bprivate_key\s*[=:]+\s*['"]?(-----BEGIN (?:RSA |EC )?PRIVATE KEY-----)'''
 secretGroup = 1
 keywords    = ["private_key", "BEGIN PRIVATE KEY", "BEGIN RSA PRIVATE KEY"]
 
-# ─────────────────────────────────────────────
-# MONTE CARLO
-# ⚠️  Sin prefijo oficial. Solo detectable por nombre de variable.
-# ─────────────────────────────────────────────
-
 [[rules]]
 id          = "montecarlo-token"
-description = "Monte Carlo API Key o Token (por nombre de variable)"
+description = "Monte Carlo API Key"
 regex       = '''(?i)\b(monte[_\-\.]?carlo[_\-\.]?(?:api[_\-\.]?)?(?:key|token))\s*[=:]+\s*['"]?([a-zA-Z0-9\-]{20,})['"]?'''
 secretGroup = 2
 entropy     = 3.0
 keywords    = ["montecarlo_api_key", "MONTECARLO_API_KEY", "monte_carlo_token"]
 
-# ─────────────────────────────────────────────
-# SHORTCUT (ex Clubhouse)
-# ⚠️  Tokens son UUID v4. Solo detectable por nombre de variable.
-# ─────────────────────────────────────────────
-
 [[rules]]
 id          = "shortcut-api-token"
-description = "Shortcut API Token UUID (por nombre de variable)"
+description = "Shortcut API Token"
 regex       = '''(?i)\b(shortcut[_\-\.]?(?:api[_\-\.]?)?token|clubhouse[_\-\.]?(?:api[_\-\.]?)?token)\s*[=:]+\s*['"]?([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})['"]?'''
 secretGroup = 2
 entropy     = 3.0
 keywords    = ["shortcut_token", "SHORTCUT_TOKEN", "clubhouse_token"]
 
-# ─────────────────────────────────────────────
-# PERSONIO
-# ⚠️  Sin prefijo oficial. Client ID + Secret: alfanuméricos.
-#    Solo detectable por nombre de variable.
-# ─────────────────────────────────────────────
-
 [[rules]]
 id          = "personio-client-secret"
-description = "Personio API Client Secret (por nombre de variable)"
+description = "Personio API Client Secret"
 regex       = '''(?i)\b(personio[_\-\.]?client[_\-\.]?secret|personio[_\-\.]?secret)\s*[=:]+\s*['"]?([a-zA-Z0-9]{32,})['"]?'''
 secretGroup = 2
 entropy     = 3.5
 keywords    = ["personio_client_secret", "PERSONIO_CLIENT_SECRET"]
 
-# ─────────────────────────────────────────────
-# RABBITMQ (AMQP URIs)
-# ✅ Formato estándar RFC 3986: amqp(s)://user:pass@host[:port][/vhost]
-# ─────────────────────────────────────────────
-
 [[rules]]
 id          = "rabbitmq-amqp-uri"
-description = "RabbitMQ AMQP connection URI con credenciales"
+description = "RabbitMQ AMQP URI con credenciales"
 regex       = '''\bamqps?://[^:@\s]+:[^@\s]{4,}@[a-zA-Z0-9.\-]+(:[0-9]+)?(/[a-zA-Z0-9%\-_]*)?'''
 entropy     = 3.0
 keywords    = ["amqp://", "amqps://"]
-
-# ─────────────────────────────────────────────
-# ARCHIVOS A IGNORAR SIEMPRE
-# ─────────────────────────────────────────────
 
 [allowlist]
 description = "Archivos que nunca deben escanearse"
@@ -422,7 +299,6 @@ paths = [
   '''\.pytest_cache/''',
   '''coverage/''',
   '''\.nyc_output/''',
-  # Tests — pueden tener valores fake
   '''(test|spec|__tests__|__mocks__).*\.(py|js|ts|java|kt)$''',
   '''.*\.test\.(js|ts|jsx|tsx)$''',
   '''.*\.spec\.(js|ts|jsx|tsx)$''',
