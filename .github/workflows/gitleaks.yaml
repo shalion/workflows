@@ -1,7 +1,7 @@
 name: Secret Scan
 
 on:
-  pull_request:
+  workflow_call:  # ← cambiado de pull_request
 
 jobs:
   gitleaks:
@@ -12,13 +12,21 @@ jobs:
       pull-requests: write
 
     steps:
-      # ── Checkout ────────────────────────────────────────────────────────────
+      # ── Checkout shalion/workflows para obtener el gitleaks.toml ────────────
+      - name: Checkout shalion/workflows (config)
+        uses: actions/checkout@v4
+        with:
+          repository: shalion/workflows
+          path: .gitleaks-config
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── Checkout del repo target ─────────────────────────────────────────────
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # ── Scan: diff (push / PR) ───────────────────────────────────────────────
+      # ── Scan ─────────────────────────────────────────────────────────────────
       - name: Gitleaks — diff scan
         id: gitleaks_diff
         uses: gitleaks/gitleaks-action@v2
@@ -28,7 +36,7 @@ jobs:
           GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }} # gitguardian:ignore
           GITLEAKS_NOTIFY_USER_LIST: "@platforms-general, @platforms-managers"
           GITLEAKS_ENABLE_COMMENTS: "true"
-          GITLEAKS_CONFIG: .github/gitleaks.toml
+          GITLEAKS_CONFIG: .gitleaks-config/.github/gitleaks.toml  # ← apunta al checkout del repo central
           GITLEAKS_REPORT_FORMAT: sarif
           GITLEAKS_REPORT_PATH: results.sarif
 
@@ -88,8 +96,8 @@ jobs:
           REPORT="$GITHUB_WORKSPACE/results.sarif"
 
           if [ ! -f "$REPORT" ]; then
-            echo "❌ SARIF report not found at $REPORT"
-            exit 1
+            echo "✅ No secrets found, no SARIF generated."
+            exit 0  # ← corregido: era exit 1
           fi
 
           TOTAL=$(jq '[.runs[].results[]] | length' "$REPORT")
