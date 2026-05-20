@@ -19,7 +19,6 @@ jobs:
         with:
           repository: shalion/workflows
           path: .gitleaks-config
-          token: ${{ secrets.WORKFLOWS_REPO_TOKEN }}
           ref: main
 
       # ── Checkout del repo target ─────────────────────────────────────────────
