@@ -1,7 +1,8 @@
 name: Secret Scan
 
 on:
-  workflow_call:  # ← cambiado de pull_request
+  pull_request:
+  workflow_call:
 
 jobs:
   gitleaks:
