@@ -149,7 +149,7 @@ jobs:
                   { type: "divider" },
                   {
                     type: "section",
-                    text: { type: "mrkdwn", text: "⚠️ *Rotá las credenciales expuestas inmediatamente.*" }
+                    text: { type: "mrkdwn", text: "⚠️ *Rota las credenciales expuestas inmediatamente.*" }
                   },
                   {
                     type: "actions",
@@ -175,9 +175,9 @@ jobs:
             fi
 
             # ── Email notification ──────────────────────────────────────────
-            printf "To: %s\nFrom: GitHub Actions <%s>\nSubject: 🚨 [SECRET DETECTED] %s — %s:%s\nContent-Type: text/plain; charset=UTF-8\n\nRule       : %s\nArchivo    : %s\nLínea      : %s\nRepository : %s\nBranch     : %s\nCommit     : %s\nActor      : %s\nEvent      : %s\n\nDetalle:\n%s\n\nVer run completo:\n%s\n\nRotá las credenciales expuestas inmediatamente.\n" \
+            printf "To: %s\nFrom: GitHub Actions <%s>\nSubject: 🚨 [SECRET DETECTED] [%s] %s — %s:%s\nContent-Type: text/plain; charset=UTF-8\n\nRule       : %s\nArchivo    : %s\nLínea      : %s\nRepository : %s\nBranch     : %s\nCommit     : %s\nActor      : %s\nEvent      : %s\n\nDetalle:\n%s\n\nVer run completo:\n%s\n\nRota las credenciales expuestas inmediatamente.\n" \
               "$ALERT_EMAIL" "$MAIL_USERNAME" \
-              "$RULE" "$FILE" "$LINE" \
+              "$EVENT" "$RULE" "$FILE" "$LINE" \
               "$RULE" "$FILE" "$LINE" \
               "$REPO" "$BRANCH" "$SHA" "$ACTOR" "$EVENT" \
               "$MESSAGE" "$RUN_URL" \
