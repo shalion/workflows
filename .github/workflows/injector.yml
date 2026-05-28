@@ -1,0 +1,66 @@
+name: Inject Secret Scan Workflow
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  inject:
+    name: Ensure secret-scan.yml exists in all org repos
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inject workflow into repos that are missing it
+        env:
+          GH_TOKEN: ${{ secrets.ORG_WORKFLOW_PAT }}
+          ORG: shalion
+          SKIP_REPOS: "workflows,.github"
+          FILE_PATH: ".github/workflows/secret-scan.yml"
+        run: |
+          set -euo pipefail
+
+          CONTENT='name: Secret Scan\n\non:\n  push:\n  pull_request:\n\njobs:\n  secret-scan:\n    uses: shalion/workflows/.github/workflows/gitleaks.yml@main\n    secrets: inherit\n'
+          ENCODED=$(printf "$CONTENT" | base64 -w 0)
+
+          echo "📋 Fetching repos for org: ${ORG}..."
+          REPOS=$(gh repo list "${ORG}" --limit 1000 --json name,isArchived \
+            --jq '.[] | select(.isArchived == false) | .name')
+
+          INJECTED=0
+          SKIPPED=0
+
+          for REPO in $REPOS; do
+            if echo "$SKIP_REPOS" | tr ',' '\n' | grep -qx "$REPO"; then
+              continue
+            fi
+
+            EXISTING=$(gh api \
+              /repos/${ORG}/${REPO}/contents/${FILE_PATH} \
+              --jq '.sha' 2>/dev/null || echo "")
+
+            if [ -n "$EXISTING" ]; then
+              (( SKIPPED++ )) || true
+              continue
+            fi
+
+            DEFAULT_BRANCH=$(gh api /repos/${ORG}/${REPO} \
+              --jq '.default_branch' 2>/dev/null || echo "main")
+
+            if gh api \
+              --method PUT \
+              -H "Accept: application/vnd.github+json" \
+              /repos/${ORG}/${REPO}/contents/${FILE_PATH} \
+              -f message="ci: add secret scan workflow [skip ci]" \
+              -f content="${ENCODED}" \
+              -f branch="${DEFAULT_BRANCH}" > /dev/null 2>&1; then
+              echo "✅ ${REPO}: injected"
+              (( INJECTED++ )) || true
+            else
+              echo "⚠️  ${REPO}: failed (empty repo or no permission)"
+            fi
+
+            sleep 0.3
+          done
+
+          echo ""
+          echo "Injected: ${INJECTED} | Already present: ${SKIPPED}"
