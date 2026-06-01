@@ -1,8 +1,6 @@
 name: Inject Secret Scan Workflow
 
 on:
-  schedule:
-    - cron: "0 6 * * *"
   workflow_dispatch:
 
 jobs:
@@ -14,7 +12,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.ORG_WORKFLOW_PAT }}
           ORG: shalion
-          SKIP_REPOS: "workflows,.github"
+          ALLOW_REPOS: "environment-replication,testing-gitleaks,shaitam"
           FILE_PATH: ".github/workflows/secret-scan.yml"
         run: |
           set -euo pipefail
@@ -30,7 +28,7 @@ jobs:
           SKIPPED=0
 
           for REPO in $REPOS; do
-            if echo "$SKIP_REPOS" | tr ',' '\n' | grep -qx "$REPO"; then
+            if ! echo "$ALLOW_REPOS" | tr ',' '\n' | grep -qx "$REPO"; then
               continue
             fi
 
@@ -39,6 +37,7 @@ jobs:
               --jq '.sha' 2>/dev/null || echo "")
 
             if [ -n "$EXISTING" ]; then
+              echo "⏭️  ${REPO}: already has ${FILE_PATH}, skipping."
               (( SKIPPED++ )) || true
               continue
             fi
