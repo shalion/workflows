@@ -32,11 +32,13 @@ jobs:
               continue
             fi
 
-            EXISTING=$(gh api \
-              /repos/${ORG}/${REPO}/contents/${FILE_PATH} \
-              --jq '.sha' 2>/dev/null || echo "")
+            echo "🔍 Checking ${REPO}..."
 
-            if [ -n "$EXISTING" ]; then
+            STATUS=$(gh api \
+              /repos/${ORG}/${REPO}/contents/${FILE_PATH} \
+              --jq '.sha' 2>&1)
+
+            if echo "$STATUS" | grep -qv 'Not Found\|404\|HTTP 404'; then
               echo "⏭️  ${REPO}: already has ${FILE_PATH}, skipping."
               (( SKIPPED++ )) || true
               continue
