@@ -36,9 +36,9 @@ jobs:
 
             STATUS=$(gh api \
               /repos/${ORG}/${REPO}/contents/${FILE_PATH} \
-              --jq '.sha' 2>&1)
+              --jq '.sha' 2>&1 || true)
 
-            if echo "$STATUS" | grep -qv 'Not Found\|404\|HTTP 404'; then
+            if [ -n "$STATUS" ] && ! echo "$STATUS" | grep -q 'Not Found\|404'; then
               echo "⏭️  ${REPO}: already has ${FILE_PATH}, skipping."
               (( SKIPPED++ )) || true
               continue
